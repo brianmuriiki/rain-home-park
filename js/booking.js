@@ -126,7 +126,7 @@ function isValidPhone(phone) {
 
 function simulateEmailNotification(bookingData) {
     const emailContent = `
-        TO: owner@rainhomepark.com, admin@rainhomepark.com
+        TO: brianmuriiki76@gmai.com, admin@rainhomepark.com
         SUBJECT: New Booking Request - ${bookingData.eventType} on ${bookingData.eventDate}
         
         Dear Rain Home Park Team,
