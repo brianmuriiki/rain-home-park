@@ -1,19 +1,43 @@
-// ===== Admin Dashboard JavaScript =====
+// ===== Admin Dashboard with Firebase =====
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Load bookings by default
-    loadBookings();
+    // Check authentication
+    auth.onAuthStateChanged((user) => {
+        if (!user) {
+            window.location.href = 'admin.html';
+        } else {
+            console.log("✅ Admin authenticated:", user.email);
+            initializeAdmin();
+        }
+    });
 });
 
-// Tab Switching
+function initializeAdmin() {
+    loadBookings();
+    setupRealtimeListeners();
+}
+
+// Real-time updates
+function setupRealtimeListeners() {
+    // Listen for booking changes
+    db.collection('bookings')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot((snapshot) => {
+            const bookings = [];
+            snapshot.forEach(doc => {
+                bookings.push({ id: doc.id, ...doc.data() });
+            });
+            displayBookings(bookings);
+        });
+}
+
+// ===== Tab Navigation =====
 function switchTab(tabName) {
-    // Update navigation buttons
     document.querySelectorAll('.admin-nav-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.closest('.admin-nav-btn').classList.add('active');
     
-    // Update tab content
     document.querySelectorAll('.admin-tab').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -35,27 +59,50 @@ function switchTab(tabName) {
 }
 
 // ===== Bookings Management =====
-function loadBookings() {
-    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-    const container = document.getElementById('bookingsList');
-    const countSpan = document.getElementById('bookingCount');
-    
-    if (countSpan) {
-        countSpan.textContent = `${bookings.length} booking${bookings.length !== 1 ? 's' : ''}`;
+async function loadBookings() {
+    try {
+        const snapshot = await db.collection('bookings')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const bookings = [];
+        snapshot.forEach(doc => {
+            bookings.push({ id: doc.id, ...doc.data() });
+        });
+        
+        displayBookings(bookings);
+        updateBookingStats(bookings);
+        
+    } catch (error) {
+        console.error("Error loading bookings:", error);
+        showToast('Error loading bookings', 'error');
     }
-    
+}
+
+function displayBookings(bookings) {
+    const container = document.getElementById('bookingsList');
     if (!container) return;
     
     if (bookings.length === 0) {
-        container.innerHTML = '<p class="no-data">No bookings yet.</p>';
+        container.innerHTML = `
+            <div class="no-data">
+                <i class="fas fa-calendar-check"></i>
+                <p>No bookings yet</p>
+                <small>New bookings will appear here automatically</small>
+            </div>`;
         return;
     }
     
     container.innerHTML = bookings.map(booking => `
         <div class="booking-card">
             <div class="booking-header">
-                <h3>${booking.fullName}</h3>
-                <span class="booking-status status-${booking.status.toLowerCase()}">${booking.status}</span>
+                <div>
+                    <h3>${booking.fullName}</h3>
+                    <small>${new Date(booking.createdAt?.toDate()).toLocaleDateString()}</small>
+                </div>
+                <span class="booking-status status-${(booking.status || 'pending').toLowerCase()}">
+                    ${booking.status || 'Pending'}
+                </span>
             </div>
             <div class="booking-details">
                 <div class="booking-detail">
@@ -80,17 +127,19 @@ function loadBookings() {
                 </div>
             </div>
             ${booking.specialRequests && booking.specialRequests !== 'None' ? 
-                `<p><strong>Special Requests:</strong> ${booking.specialRequests}</p>` : ''}
+                `<div class="booking-requests">
+                    <strong>Special Requests:</strong> ${booking.specialRequests}
+                </div>` : ''}
             <div class="booking-actions">
                 ${booking.status === 'Pending' ? 
-                    `<button class="btn-confirm" onclick="updateBookingStatus(${booking.id}, 'Confirmed')">
+                    `<button class="btn-confirm" onclick="updateBookingStatus('${booking.id}', 'Confirmed')">
                         <i class="fas fa-check"></i> Confirm
                     </button>` : 
-                    `<button class="btn-pending" onclick="updateBookingStatus(${booking.id}, 'Pending')">
+                    `<button class="btn-pending" onclick="updateBookingStatus('${booking.id}', 'Pending')">
                         <i class="fas fa-clock"></i> Mark Pending
                     </button>`
                 }
-                <button class="btn-delete" onclick="deleteBooking(${booking.id})">
+                <button class="btn-delete" onclick="deleteBooking('${booking.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -98,46 +147,89 @@ function loadBookings() {
     `).join('');
 }
 
-function updateBookingStatus(id, status) {
-    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-    const index = bookings.findIndex(b => b.id === id);
+function updateBookingStats(bookings) {
+    const totalEl = document.getElementById('totalBookings');
+    const pendingEl = document.getElementById('pendingBookings');
+    const confirmedEl = document.getElementById('confirmedBookings');
+    const pendingBadge = document.getElementById('pendingCount');
     
-    if (index !== -1) {
-        bookings[index].status = status;
-        localStorage.setItem('bookings', JSON.stringify(bookings));
-        loadBookings();
-        showToast(`Booking ${status.toLowerCase()} successfully!`);
+    const pending = bookings.filter(b => b.status === 'Pending').length;
+    const confirmed = bookings.filter(b => b.status === 'Confirmed').length;
+    
+    if (totalEl) totalEl.textContent = bookings.length;
+    if (pendingEl) pendingEl.textContent = pending;
+    if (confirmedEl) confirmedEl.textContent = confirmed;
+    if (pendingBadge) {
+        pendingBadge.textContent = pending;
+        pendingBadge.style.display = pending > 0 ? 'inline' : 'none';
     }
 }
 
-function deleteBooking(id) {
-    if (confirm('Are you sure you want to delete this booking?')) {
-        const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-        const filtered = bookings.filter(b => b.id !== id);
-        localStorage.setItem('bookings', JSON.stringify(filtered));
-        loadBookings();
+async function updateBookingStatus(bookingId, status) {
+    try {
+        await db.collection('bookings').doc(bookingId).update({
+            status: status,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast(`Booking ${status.toLowerCase()} successfully!`);
+    } catch (error) {
+        console.error("Error updating booking:", error);
+        showToast('Error updating booking', 'error');
+    }
+}
+
+async function deleteBooking(bookingId) {
+    if (!confirm('Are you sure you want to delete this booking? This cannot be undone.')) return;
+    
+    try {
+        await db.collection('bookings').doc(bookingId).delete();
         showToast('Booking deleted!');
+    } catch (error) {
+        console.error("Error deleting booking:", error);
+        showToast('Error deleting booking', 'error');
     }
 }
 
 // ===== Gallery Management =====
-function loadGallery() {
-    const images = JSON.parse(localStorage.getItem('galleryImages') || '[]');
+async function loadGallery() {
+    try {
+        const snapshot = await db.collection('gallery')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const images = [];
+        snapshot.forEach(doc => {
+            images.push({ id: doc.id, ...doc.data() });
+        });
+        
+        displayAdminGallery(images);
+    } catch (error) {
+        console.error("Error loading gallery:", error);
+    }
+}
+
+function displayAdminGallery(images) {
     const container = document.getElementById('adminGalleryList');
-    
     if (!container) return;
     
     if (images.length === 0) {
-        container.innerHTML = '<p class="no-data">No images in gallery.</p>';
+        container.innerHTML = `
+            <div class="no-data">
+                <i class="fas fa-images"></i>
+                <p>No images in gallery</p>
+                <small>Add images using the form above</small>
+            </div>`;
         return;
     }
     
-    container.innerHTML = images.map((image, index) => `
+    container.innerHTML = images.map(image => `
         <div class="gallery-item-admin">
-            <img src="${image.url}" alt="${image.caption}">
+            <img src="${image.url}" alt="${image.caption}" 
+                 onerror="this.src='https://via.placeholder.com/300x200?text=Error'">
             <div class="gallery-item-info">
-                <p><strong>${image.caption}</strong></p>
-                <button class="btn-delete-img" onclick="deleteGalleryImage(${index})">
+                <p><strong>${image.caption || 'No caption'}</strong></p>
+                <p class="image-url">${image.url.substring(0, 40)}...</p>
+                <button class="btn-delete-img" onclick="deleteGalleryImage('${image.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -145,70 +237,129 @@ function loadGallery() {
     `).join('');
 }
 
-function addGalleryImage() {
+async function addGalleryImage() {
     const urlInput = document.getElementById('imageUrl');
     const captionInput = document.getElementById('imageCaption');
     const fileInput = document.getElementById('imageUpload');
     
-    if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            saveGalleryImage(e.target.result, captionInput.value || 'Gallery Image');
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    } else if (urlInput.value) {
-        saveGalleryImage(urlInput.value, captionInput.value || 'Gallery Image');
-    } else {
-        alert('Please provide an image URL or select a file.');
-        return;
-    }
+    const caption = captionInput.value || 'Gallery Image';
     
-    urlInput.value = '';
-    captionInput.value = '';
-    fileInput.value = '';
-}
-
-function saveGalleryImage(url, caption) {
-    const images = JSON.parse(localStorage.getItem('galleryImages') || '[]');
-    images.push({ url, caption });
-    localStorage.setItem('galleryImages', JSON.stringify(images));
-    loadGallery();
-    showToast('Image added!');
-}
-
-function deleteGalleryImage(index) {
-    if (confirm('Delete this image?')) {
-        const images = JSON.parse(localStorage.getItem('galleryImages') || '[]');
-        images.splice(index, 1);
-        localStorage.setItem('galleryImages', JSON.stringify(images));
+    try {
+        if (fileInput.files && fileInput.files[0]) {
+            // Upload to Firebase Storage
+            const file = fileInput.files[0];
+            const storageRef = storage.ref('gallery/' + Date.now() + '_' + file.name);
+            
+            showToast('Uploading image...');
+            
+            const uploadTask = await storageRef.put(file);
+            const downloadURL = await uploadTask.ref.getDownloadURL();
+            
+            // Save metadata to Firestore
+            await db.collection('gallery').add({
+                url: downloadURL,
+                caption: caption,
+                fileName: file.name,
+                size: file.size,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+        } else if (urlInput.value) {
+            // Save URL directly
+            if (!isValidUrl(urlInput.value)) {
+                showToast('Please enter a valid URL', 'error');
+                return;
+            }
+            
+            await db.collection('gallery').add({
+                url: urlInput.value,
+                caption: caption,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            showToast('Please provide an image URL or select a file', 'error');
+            return;
+        }
+        
+        showToast('Image added successfully!');
+        urlInput.value = '';
+        captionInput.value = '';
+        fileInput.value = '';
         loadGallery();
+        
+    } catch (error) {
+        console.error("Error adding image:", error);
+        showToast('Error adding image: ' + error.message, 'error');
+    }
+}
+
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function deleteGalleryImage(imageId) {
+    if (!confirm('Delete this image?')) return;
+    
+    try {
+        await db.collection('gallery').doc(imageId).delete();
         showToast('Image deleted!');
+        loadGallery();
+    } catch (error) {
+        console.error("Error deleting image:", error);
+        showToast('Error deleting image', 'error');
     }
 }
 
 // ===== Packages Management =====
-function loadPackages() {
-    const packages = JSON.parse(localStorage.getItem('eventPackages') || '[]');
+async function loadPackages() {
+    try {
+        const snapshot = await db.collection('packages').get();
+        
+        const packages = [];
+        snapshot.forEach(doc => {
+            packages.push({ id: doc.id, ...doc.data() });
+        });
+        
+        displayAdminPackages(packages);
+    } catch (error) {
+        console.error("Error loading packages:", error);
+    }
+}
+
+function displayAdminPackages(packages) {
     const container = document.getElementById('adminPackagesList');
-    
     if (!container) return;
     
     if (packages.length === 0) {
-        container.innerHTML = '<p class="no-data">No packages created.</p>';
+        container.innerHTML = '<p class="no-data">No packages created yet.</p>';
         return;
     }
     
-    container.innerHTML = packages.map((pkg, index) => `
+    container.innerHTML = packages.map(pkg => `
         <div class="package-card-admin">
-            <h3>${pkg.title}</h3>
-            <p class="price">${pkg.price}</p>
+            <div class="package-card-header">
+                <h3>${pkg.title}</h3>
+                <span class="price">${pkg.price}</span>
+            </div>
             <p>${pkg.description}</p>
-            ${pkg.features ? `<p class="features"><strong>Features:</strong> ${pkg.features.join(', ')}</p>` : ''}
+            ${pkg.features ? `
+                <div class="features">
+                    <strong>Features:</strong>
+                    <ul>
+                        ${(Array.isArray(pkg.features) ? pkg.features : [pkg.features]).map(f => `<li>${f}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
             <div class="package-actions">
-                <button class="btn-edit" onclick="editPackage(${index})">
+                <button class="btn-edit" onclick="editPackage('${pkg.id}')">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn-delete" onclick="deletePackage(${index})">
+                <button class="btn-delete" onclick="deletePackage('${pkg.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -216,122 +367,149 @@ function loadPackages() {
     `).join('');
 }
 
-function addOrUpdatePackage() {
-    const title = document.getElementById('packageTitle').value;
-    const price = document.getElementById('packagePrice').value;
-    const description = document.getElementById('packageDescription').value;
-    const featuresStr = document.getElementById('packageFeatures').value;
+async function addOrUpdatePackage() {
+    const title = document.getElementById('packageTitle').value.trim();
+    const price = document.getElementById('packagePrice').value.trim();
+    const description = document.getElementById('packageDescription').value.trim();
+    const featuresStr = document.getElementById('packageFeatures').value.trim();
     
     if (!title || !price || !description) {
-        alert('Please fill all required fields.');
+        showToast('Please fill all required fields', 'error');
         return;
     }
     
-    const features = featuresStr ? featuresStr.split(',').map(f => f.trim()) : [];
-    const packages = JSON.parse(localStorage.getItem('eventPackages') || '[]');
+    const features = featuresStr ? featuresStr.split(',').map(f => f.trim()).filter(f => f) : [];
     
-    packages.push({ 
-        title, 
-        price, 
-        description, 
-        features, 
-        icon: determineIcon(title) 
-    });
-    
-    localStorage.setItem('eventPackages', JSON.stringify(packages));
-    loadPackages();
-    
-    document.getElementById('packageTitle').value = '';
-    document.getElementById('packagePrice').value = '';
-    document.getElementById('packageDescription').value = '';
-    document.getElementById('packageFeatures').value = '';
-    
-    showToast('Package saved!');
+    try {
+        await db.collection('packages').add({
+            title,
+            price,
+            description,
+            features,
+            icon: determineIcon(title),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast('Package saved successfully!');
+        
+        // Clear form
+        document.getElementById('packageTitle').value = '';
+        document.getElementById('packagePrice').value = '';
+        document.getElementById('packageDescription').value = '';
+        document.getElementById('packageFeatures').value = '';
+        
+        loadPackages();
+    } catch (error) {
+        console.error("Error saving package:", error);
+        showToast('Error saving package', 'error');
+    }
 }
 
 function determineIcon(title) {
-    const iconMap = {
-        'wedding': 'fa-heart',
-        'corporate': 'fa-briefcase',
-        'birthday': 'fa-cake-candles',
-        'concert': 'fa-music'
-    };
-    return iconMap[title.toLowerCase()] || 'fa-star';
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('wedding')) return 'fa-heart';
+    if (titleLower.includes('corporate')) return 'fa-briefcase';
+    if (titleLower.includes('birthday')) return 'fa-cake-candles';
+    if (titleLower.includes('concert') || titleLower.includes('show')) return 'fa-music';
+    return 'fa-star';
 }
 
-function editPackage(index) {
-    const packages = JSON.parse(localStorage.getItem('eventPackages') || '[]');
-    const pkg = packages[index];
-    
-    document.getElementById('packageTitle').value = pkg.title;
-    document.getElementById('packagePrice').value = pkg.price;
-    document.getElementById('packageDescription').value = pkg.description;
-    document.getElementById('packageFeatures').value = pkg.features ? pkg.features.join(', ') : '';
-    
-    packages.splice(index, 1);
-    localStorage.setItem('eventPackages', JSON.stringify(packages));
-    loadPackages();
+async function editPackage(packageId) {
+    try {
+        const doc = await db.collection('packages').doc(packageId).get();
+        if (doc.exists) {
+            const pkg = doc.data();
+            document.getElementById('packageTitle').value = pkg.title;
+            document.getElementById('packagePrice').value = pkg.price;
+            document.getElementById('packageDescription').value = pkg.description;
+            document.getElementById('packageFeatures').value = Array.isArray(pkg.features) ? pkg.features.join(', ') : pkg.features || '';
+            
+            // Delete old version
+            await db.collection('packages').doc(packageId).delete();
+            loadPackages();
+        }
+    } catch (error) {
+        console.error("Error editing package:", error);
+        showToast('Error loading package for edit', 'error');
+    }
 }
 
-function deletePackage(index) {
-    if (confirm('Delete this package?')) {
-        const packages = JSON.parse(localStorage.getItem('eventPackages') || '[]');
-        packages.splice(index, 1);
-        localStorage.setItem('eventPackages', JSON.stringify(packages));
-        loadPackages();
+async function deletePackage(packageId) {
+    if (!confirm('Delete this package?')) return;
+    
+    try {
+        await db.collection('packages').doc(packageId).delete();
         showToast('Package deleted!');
+        loadPackages();
+    } catch (error) {
+        console.error("Error deleting package:", error);
+        showToast('Error deleting package', 'error');
     }
 }
 
 // ===== Settings Management =====
-function loadSettings() {
-    const info = JSON.parse(localStorage.getItem('contactInfo') || '{}');
-    const social = JSON.parse(localStorage.getItem('socialLinks') || '{}');
-    
-    document.getElementById('parkPhone').value = info.phone || '';
-    document.getElementById('parkEmail').value = info.email || '';
-    document.getElementById('parkAddress').value = info.address || '';
-    document.getElementById('socialFacebook').value = social.facebook || '';
-    document.getElementById('socialInstagram').value = social.instagram || '';
-    document.getElementById('socialTwitter').value = social.twitter || '';
+async function loadSettings() {
+    try {
+        const contactDoc = await db.collection('settings').doc('contact').get();
+        if (contactDoc.exists) {
+            const contact = contactDoc.data();
+            document.getElementById('parkPhone').value = contact.phone || '';
+            document.getElementById('parkEmail').value = contact.email || '';
+            document.getElementById('parkAddress').value = contact.address || '';
+        }
+        
+        const socialDoc = await db.collection('settings').doc('social').get();
+        if (socialDoc.exists) {
+            const social = socialDoc.data();
+            document.getElementById('socialFacebook').value = social.facebook || '';
+            document.getElementById('socialInstagram').value = social.instagram || '';
+            document.getElementById('socialTwitter').value = social.twitter || '';
+        }
+    } catch (error) {
+        console.error("Error loading settings:", error);
+    }
 }
 
-function saveSettings(e) {
+async function saveSettings(e) {
     e.preventDefault();
     
     const contactInfo = {
-        phone: document.getElementById('parkPhone').value,
-        email: document.getElementById('parkEmail').value,
-        address: document.getElementById('parkAddress').value
+        phone: document.getElementById('parkPhone').value.trim(),
+        email: document.getElementById('parkEmail').value.trim(),
+        address: document.getElementById('parkAddress').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
     const socialLinks = {
-        facebook: document.getElementById('socialFacebook').value,
-        instagram: document.getElementById('socialInstagram').value,
-        twitter: document.getElementById('socialTwitter').value
+        facebook: document.getElementById('socialFacebook').value.trim(),
+        instagram: document.getElementById('socialInstagram').value.trim(),
+        twitter: document.getElementById('socialTwitter').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
-    localStorage.setItem('contactInfo', JSON.stringify(contactInfo));
-    localStorage.setItem('socialLinks', JSON.stringify(socialLinks));
-    
-    showToast('Settings saved!');
+    try {
+        await db.collection('settings').doc('contact').set(contactInfo);
+        await db.collection('settings').doc('social').set(socialLinks);
+        
+        showToast('Settings saved successfully!');
+    } catch (error) {
+        console.error("Error saving settings:", error);
+        showToast('Error saving settings', 'error');
+    }
 }
 
-// Utility
-function showToast(message) {
+// ===== Utility Functions =====
+function showToast(message, type = 'success') {
     const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: #2d5a27;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+        ${message}
     `;
-    toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }

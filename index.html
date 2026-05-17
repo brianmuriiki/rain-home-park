@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rain Home Park - Elegant venue for weddings, corporate events, and celebrations">
+    <title>Rain Home Park | Where Memories Blossom</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="#home" class="logo">
+                <i class="fas fa-leaf"></i>
+                <span>Rain Home Park</span>
+            </a>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#home" class="nav-link">Home</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+                <li><a href="#gallery" class="nav-link">Gallery</a></li>
+                <li><a href="#services" class="nav-link">Services</a></li>
+                <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
+                <li><a href="#booking" class="nav-link">Book Now</a></li>
+                <li><a href="admin/admin.html" class="nav-link admin-link">
+                    <i class="fas fa-lock"></i> Admin
+                </a></li>
+            </ul>
+            <div class="hamburger" id="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-slider">
+            <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1600')"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1600')"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=1600')"></div>
+        </div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <span class="hero-badge">🌿 Premium Event Venue</span>
+            <h1 class="hero-title">Where Nature Meets<br>Elegance</h1>
+            <p class="hero-description">Create unforgettable memories in our enchanting garden paradise. Perfect for weddings, corporate events, and celebrations of all kinds.</p>
+            <div class="hero-buttons">
+                <a href="#booking" class="btn btn-primary">Book Your Event <i class="fas fa-arrow-right"></i></a>
+                <a href="#gallery" class="btn btn-outline">Explore Gallery</a>
+            </div>
+        </div>
+        <div class="hero-dots">
+            <span class="dot active" onclick="currentSlide(0)"></span>
+            <span class="dot" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Our Story</span>
+                <h2 class="section-title">Discover Rain Home Park</h2>
+                <p class="section-subtitle">A sanctuary of natural beauty and refined elegance</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-image">
+                    <img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800" alt="Beautiful garden venue" class="main-image">
+                    <div class="experience-badge">
+                        <span class="years">15+</span>
+                        <span class="text">Years of<br>Excellence</span>
+                    </div>
+                </div>
+                <div class="about-content">
+                    <h3>A Legacy of Beautiful Celebrations</h3>
+                    <p>Nestled in the heart of nature, Rain Home Park has been the premier destination for life's most precious moments since 2008. Our meticulously landscaped gardens, serene water features, and versatile event spaces provide the perfect canvas for your vision.</p>
+                    <div class="features-grid">
+                        <div class="feature">
+                            <i class="fas fa-tree"></i>
+                            <h4>5 Acres of Gardens</h4>
+                            <p>Lush, manicured landscapes</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-users"></i>
+                            <h4>Up to 500 Guests</h4>
+                            <p>Intimate to grand celebrations</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-parking"></i>
+                            <h4>Ample Parking</h4>
+                            <p>200+ vehicle capacity</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-wifi"></i>
+                            <h4>Modern Amenities</h4>
+                            <p>Full tech & sound systems</p>
+                        </div>
+                    </div>
+                    <a href="#booking" class="btn btn-secondary">Schedule a Tour <i class="fas fa-calendar-check"></i></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="gallery" class="gallery">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Gallery</span>
+                <h2 class="section-title">Our Beautiful Spaces</h2>
+                <p class="section-subtitle">Glimpses of the magic we create</p>
+            </div>
+            <div class="gallery-grid" id="galleryGrid">
+                <!-- Gallery items loaded dynamically -->
+            </div>
+            <div class="gallery-cta">
+                <p>Want to see more? Schedule a personal tour of our venue.</p>
+                <a href="#booking" class="btn btn-primary">Book a Visit</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-lightbox">&times;</span>
+        <img class="lightbox-content" id="lightboxImg">
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+        <button class="lightbox-prev" onclick="changeLightboxImage(-1)">&#10094;</button>
+        <button class="lightbox-next" onclick="changeLightboxImage(1)">&#10095;</button>
+    </div>
+
+    <!-- Services Section -->
+    <section id="services" class="services">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Our Services</span>
+                <h2 class="section-title">Events We Host</h2>
+                <p class="section-subtitle">Tailored experiences for every occasion</p>
+            </div>
+            <div class="services-grid" id="servicesGrid">
+                <!-- Services loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Testimonials</span>
+                <h2 class="section-title">What Our Clients Say</h2>
+                <p class="section-subtitle">Real stories from real celebrations</p>
+            </div>
+            <div class="testimonials-carousel">
+                <div class="testimonial-track" id="testimonialTrack">
+                    <!-- Testimonials loaded dynamically -->
+                </div>
+                <button class="carousel-btn prev" onclick="moveTestimonial(-1)">&#10094;</button>
+                <button class="carousel-btn next" onclick="moveTestimonial(1)">&#10095;</button>
+                <div class="carousel-dots" id="carouselDots"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Booking Section -->
+    <section id="booking" class="booking">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Book Now</span>
+                <h2 class="section-title">Reserve Your Date</h2>
+                <p class="section-subtitle">Let's start planning your perfect event</p>
+            </div>
+            <div class="booking-wrapper">
+                <div class="booking-info">
+                    <h3>Why Choose Rain Home Park?</h3>
+                    <ul class="benefits-list">
+                        <li><i class="fas fa-check-circle"></i> Flexible indoor & outdoor spaces</li>
+                        <li><i class="fas fa-check-circle"></i> Professional event coordination</li>
+                        <li><i class="fas fa-check-circle"></i> Customizable catering options</li>
+                        <li><i class="fas fa-check-circle"></i> State-of-the-art facilities</li>
+                        <li><i class="fas fa-check-circle"></i> Dedicated on-site support team</li>
+                    </ul>
+                    <div class="contact-card" id="contactInfo">
+                        <!-- Contact info loaded dynamically -->
+                    </div>
+                </div>
+                <form class="booking-form" id="bookingForm">
+                    <h3>Event Booking Request</h3>
+                    <div class="form-group">
+                        <label for="fullName">Full Name *</label>
+                        <input type="text" id="fullName" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" required placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number *</label>
+                            <input type="tel" id="phone" required placeholder="(555) 123-4567">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="eventDate">Event Date *</label>
+                            <input type="date" id="eventDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventType">Event Type *</label>
+                            <select id="eventType" required>
+                                <option value="">Select event type</option>
+                                <option value="Wedding">Wedding</option>
+                                <option value="Corporate">Corporate Event</option>
+                                <option value="Birthday">Birthday Party</option>
+                                <option value="Anniversary">Anniversary</option>
+                                <option value="Concert">Concert/Performance</option>
+                                <option value="Other">Other Celebration</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="guestCount">Expected Guest Count *</label>
+                        <select id="guestCount" required>
+                            <option value="">Select number of guests</option>
+                            <option value="1-50">1-50 guests</option>
+                            <option value="51-100">51-100 guests</option>
+                            <option value="101-200">101-200 guests</option>
+                            <option value="201-300">201-300 guests</option>
+                            <option value="300+">300+ guests</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="specialRequests">Special Requests</label>
+                        <textarea id="specialRequests" rows="4" placeholder="Tell us about your vision..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-paper-plane"></i> Submit Booking Request
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3><i class="fas fa-leaf"></i> Rain Home Park</h3>
+                    <p>Creating beautiful memories since 2008.</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link" id="socialFb"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-link" id="socialIg"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-link" id="socialTw"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#gallery">Gallery</a></li>
+                        <li><a href="#services">Services</a></li>
+                        <li><a href="#booking">Book Now</a></li>
+                    </ul>
+                </div>
+                <div class="footer-contact">
+                    <h4>Contact Us</h4>
+                    <p><i class="fas fa-phone"></i> <span id="footerPhone"></span></p>
+                    <p><i class="fas fa-envelope"></i> <span id="footerEmail"></span></p>
+                    <p><i class="fas fa-map-marker-alt"></i> <span id="footerAddress"></span></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Rain Home Park. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Load Firebase Config First -->
+    <script src="js/firebase-config.js"></script>
+    
+    <!-- Load Application Scripts -->
+    <script src="js/main.js"></script>
+    <script src="js/bookings.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "rain-home-park",
+  "version": "1.0.0",
+  "description": "Rain Home Park Event Venue Website with Firebase",
+  "main": "index.html",
+  "scripts": {
+    "deploy": "firebase deploy",
+    "serve": "firebase serve"
+  },
+  "keywords": ["venue", "events", "firebase"],
+  "author": "Rain Home Park",
+  "license": "ISC"
+}
